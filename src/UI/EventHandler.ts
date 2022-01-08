@@ -1,5 +1,6 @@
-import { endGame, startGame } from "../index";
+import { endGame, startGame, restartGame } from "../index";
 import { Arrow, Game } from "../Game";
+import { ui } from "./UI";
 
 export class EventHandler {
     game: Game;
@@ -18,6 +19,10 @@ export class EventHandler {
             endGame();
         });
 
+        (document.getElementById('restart-game-button') as HTMLElement).addEventListener('click', (e: MouseEvent) => {
+            restartGame();
+        });
+
         document.addEventListener('mousedown', (e: MouseEvent) => {
             this.mouseX = e.clientX;
             this.mouseY = e.clientY;
@@ -33,12 +38,20 @@ export class EventHandler {
         document.addEventListener('mouseup', (e: MouseEvent) => {
             const targetElement = e.target as HTMLElement;
             if (EventHandler.selectedItem && targetElement) {
-                const gameObject = game.findMapObjectByHtmlElement(targetElement);
+                const gameObject = this.game.findMapObjectByHtmlElement(targetElement);
                 if (!gameObject) {
-                    const coordinates = game.getFieldCoordinates(targetElement);
-                    const arrow = game.findArrowByHtmlElement(EventHandler.selectedItem);
+                    const coordinates = this.game.getFieldCoordinates(targetElement);
+                    const arrow = this.game.findArrowByHtmlElement(EventHandler.selectedItem);
                     if (coordinates && arrow) {
+                        targetElement.style.zIndex = '10';
+                        targetElement.addEventListener('mousedown', this.onArrowMousedown);
                         this.game.placeArrowToMap(arrow, coordinates, targetElement);
+                        EventHandler.selectedItem.removeEventListener('mousedown', this.onArrowMousedown);
+                    }
+                    const isArrowTableElement = ui.getArrowTableElement(targetElement);
+                    if (isArrowTableElement && arrow) {
+                        targetElement.addEventListener('mousedown', this.onArrowMousedown);
+                        this.game.placeArrowToTable(arrow, targetElement);
                         EventHandler.selectedItem.removeEventListener('mousedown', this.onArrowMousedown);
                     }
                 }
@@ -50,6 +63,10 @@ export class EventHandler {
             EventHandler.selectedItem = null;
         });
 
+        this.addArrowsEventListeners();
+    }
+
+    addArrowsEventListeners() {
         this.game.arrows.forEach(arrow => {
             if (!arrow.coordinates) {
                 this.addArrowEventListener(arrow, 'mousedown', this.onArrowMousedown);
